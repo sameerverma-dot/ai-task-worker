@@ -53,3 +53,11 @@ def test_denied_approval_writes_nothing(browser, tmp_path):
     state = run_agent(llm, make_ctx(browser, approve=False), tmp_path)
     assert state.steps[1]["ok"] is False and state.steps[2]["observation"].startswith("BLOCKED")
     assert company_app.all_invoices() == []
+
+
+def test_failure_count_restarts_after_a_success(tmp_path):
+    # Fail twice, succeed once (the situation changed), then fail twice again: never blocked.
+    bad, good = ("read_invoice", {"filename": "missing.pdf"}), ("list_inbox", {})
+    llm = ScriptedLLM([bad, bad, good, bad, bad, ("finish", {"summary": "x", "success": False, "verified": False})])
+    state = run_agent(llm, make_ctx(), tmp_path)
+    assert not any(s["observation"].startswith("BLOCKED") for s in state.steps)

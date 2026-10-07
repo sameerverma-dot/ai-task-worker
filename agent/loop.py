@@ -38,8 +38,12 @@ def run_agent(llm, ctx, run_dir, max_steps=MAX_STEPS):
         else:
             result = execute(ctx, tool, args)  # never raises: errors come back as ok=False
 
-        # 3. OBSERVE: count failures. After the original try + MAX_RETRIES retries, warn the LLM.
-        if not result["ok"]:
+        # 3. OBSERVE: count failures IN A ROW. After the original try + MAX_RETRIES retries, warn the LLM.
+        #    Any success means the situation changed (e.g. the form was refilled), so the count restarts.
+        #    Otherwise one fixed problem would block a button for the rest of the run.
+        if result["ok"]:
+            state.failures.clear()
+        else:
             state.failures[key] += 1
             if state.failures[key] > MAX_RETRIES:
                 warning = (f"{tool} with these arguments failed {state.failures[key]} times. "

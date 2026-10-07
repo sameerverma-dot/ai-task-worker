@@ -15,7 +15,7 @@ class RunState:
         self.goal = goal
         self.facts = {}           # e.g. {"Globex_GLX-1032.pdf": "<text of that invoice>"}
         self.steps = []           # one dict per step: thought, tool, args, ok, observation, seconds
-        self.failures = Counter() # how many times each exact action has failed
+        self.failures = Counter() # how many times in a row each exact action has failed
         self.approved = False     # set by request_approval; used up by the next guarded click
         self.final = None         # set by the finish tool
 
