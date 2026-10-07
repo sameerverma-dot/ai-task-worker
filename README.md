@@ -82,7 +82,7 @@ Groq's free tier limits each model to **8,000 tokens per minute** and **200,000 
 
 **What that meant in practice:** the eval was run in parts on whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`), and every step in `steps.jsonl` records the model that made it. By about 00:30 IST all three models were out of quota, so **tasks 8, 9 and 10 never ran live.** Results from different models aren't directly comparable, and `gpt-oss-20b`, the last fallback, is clearly the weakest.
 
-`python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses whenever its quota runs out. With a full day's quota, or the paid tier, that gives a clean single-model result. This wasn't possible before the deadline.
+`python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses whenever its quota runs out. With a full day's quota, or the paid tier, that gives a clean single-model result. There wasn't enough quota left to do this for the results below.
 
 ### Results by task
 
@@ -161,6 +161,6 @@ In run 1, task 5's Submit failed three times for three *different* reasons: the 
 
 - **LLM at runtime:** `openai/gpt-oss-120b` on Groq, with tool calling (set in `config.py`). When a model's daily quota runs out, it falls back to `qwen/qwen3.8-27b` and then `openai/gpt-oss-20b`. The spec's default, `llama-3.3-70b-versatile`, is no longer offered by Groq.
 - **Libraries:** Flask, Playwright (Chromium), pypdf, reportlab, groq, pydantic, PyYAML, pytest.
-- **Built with Claude Code** (Anthropic's coding agent), following `TASK_WORKER_SPEC.md` milestone by milestone, running each milestone before committing.
+- **Built with Claude Code** (Anthropic's coding agent), built in milestones (company → tools → agent loop → reliability → eval → docs), running each milestone before committing.
 
 See `DESIGN_DECISIONS.md` for the reasoning behind the main design choices.
