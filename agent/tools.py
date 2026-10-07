@@ -45,8 +45,16 @@ def read_invoice(ctx, filename):
     return ok(text)
 
 
+def _page_result(ctx, text):
+    """Turn a page load into ok/fail: an HTTP error page (400, 500 ...) counts as a failure."""
+    if ctx.browser.last_status >= 400:
+        body = ctx.browser.page.inner_text("body")[:300]
+        return fail(f"{text} The page shows an error: {body}")
+    return ok(text)
+
+
 def browser_open(ctx, path):
-    return ok(ctx.browser.open(path))
+    return _page_result(ctx, ctx.browser.open(path))
 
 
 def browser_read(ctx):
@@ -65,7 +73,7 @@ def browser_click(ctx, button_text):
     result = ctx.browser.click(button_text)
     if guarded:
         ctx.state.approved = False
-    return ok(result)
+    return _page_result(ctx, result)
 
 
 def ask_human(ctx, question):

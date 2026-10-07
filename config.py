@@ -6,10 +6,12 @@ BASE_DIR = Path(__file__).parent
 
 # --- LLM ---
 # The key is read by llm.py from the GROQ_API_KEY env var. It is never stored here.
-MODEL = os.environ.get("MODEL", "llama-3.3-70b-versatile")
+# llama-3.3-70b-versatile (the spec default) is no longer offered by Groq; gpt-oss-120b does tool calling well.
+MODEL = os.environ.get("MODEL", "openai/gpt-oss-120b")
 
 # --- Agent loop ---
-MAX_STEPS = 25          # hard cap so a confused agent can never run forever
+MAX_STEPS = 40          # hard cap so a confused agent can never run forever (spec said 25; too tight
+                        # for multi-invoice tasks, since each field is filled in its own step)
 MAX_RETRIES = 2         # after this many retries of the same failing action, force a new approach
 HISTORY_FULL_STEPS = 8  # the last N steps go to the LLM in full; older ones as one-line summaries
 
@@ -20,6 +22,6 @@ NEEDS_APPROVAL = ["Submit"]
 # --- The simulated company ---
 APP_PORT = int(os.environ.get("APP_PORT", "5055"))
 APP_URL = f"http://127.0.0.1:{APP_PORT}"
-DB_PATH = BASE_DIR / "company" / "acme.db"
+DB_PATH = Path(os.environ.get("ACME_DB", BASE_DIR / "company" / "acme.db"))
 INBOX_DIR = BASE_DIR / "company" / "inbox"
 RUNS_DIR = BASE_DIR / "runs"

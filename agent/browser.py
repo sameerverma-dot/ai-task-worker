@@ -31,6 +31,7 @@ class Browser:
         self.page = self._context.new_page()
         # Generous timeout so slow pages (SLOW_PAGE fault) are waited for, not failed.
         self.page.set_default_timeout(15000)
+        self.last_status = 200  # HTTP status of the last page load (500 = server error)
 
     def open(self, path):
         """Go to a page of the app, e.g. '/invoices/new'. Waits until it has fully loaded."""
@@ -93,4 +94,5 @@ class Browser:
     def _where(self, response):
         """Short description of where we ended up, including the HTTP status (500 = server error)."""
         status = response.status if response else "?"
+        self.last_status = response.status if response else 200
         return f"Now on {self.page.url} (HTTP {status}, title: '{self.page.title()}')."

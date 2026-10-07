@@ -33,13 +33,20 @@ class RunState:
             return "(no steps yet)"
         lines = []
         cutoff = len(self.steps) - HISTORY_FULL_STEPS
+        last_read = max((i for i, s in enumerate(self.steps, 1) if s["tool"] == "browser_read"), default=0)
         for i, s in enumerate(self.steps, start=1):
             status = "OK" if s["ok"] else "FAILED"
+            observation = s["observation"]
+            # Save tokens: invoice text is already under DOCUMENTS READ, and old page reads are stale.
+            if s["tool"] == "read_invoice" and s["ok"]:
+                observation = "(full text shown above under DOCUMENTS READ)"
+            elif s["tool"] == "browser_read" and i != last_read:
+                observation = observation[:150] + " ... (older page read, shortened)"
             if i <= cutoff:
-                lines.append(f"Step {i}: {s['tool']}({s['args']}) -> {status}: {s['observation'][:80]}")
+                lines.append(f"Step {i}: {s['tool']}({s['args']}) -> {status}: {observation[:80]}")
             else:
                 lines.append(f"Step {i}: thought: {s['thought']}\n  action: {s['tool']}({s['args']})"
-                             f"\n  result ({status}): {s['observation']}")
+                             f"\n  result ({status}): {observation}")
         return "\n".join(lines)
 
     def prompt_text(self, warning=None):
