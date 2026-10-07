@@ -5,6 +5,8 @@ Rules every tool follows:
   * It is generic. Nothing here knows what an "invoice task" is; the LLM decides
     what to read, fill and click. So a new kind of task needs no code change here.
 """
+import inspect
+
 from pypdf import PdfReader
 
 from config import INBOX_DIR, NEEDS_APPROVAL
@@ -138,7 +140,11 @@ def execute(ctx, tool, args):
     """Run one tool safely. Any crash becomes a failed observation the LLM can react to."""
     if tool not in FUNCTIONS:
         return fail(f"Unknown tool '{tool}'. Available: {list(FUNCTIONS)}")
+    function = FUNCTIONS[tool]
+    # Models sometimes add arguments a tool doesn't have; ignore those instead of failing the step.
+    allowed = inspect.signature(function).parameters
+    args = {name: value for name, value in args.items() if name in allowed}
     try:
-        return FUNCTIONS[tool](ctx, **args)
+        return function(ctx, **args)
     except Exception as e:  # a tool must never crash the loop
         return fail(f"{type(e).__name__}: {str(e)[:400]}")
