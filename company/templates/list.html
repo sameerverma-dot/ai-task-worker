@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Invoices - Acme Accounts{% endblock %}
+{% block heading %}Invoices{% endblock %}
+{% block body %}
+{% if invoices %}
+<table>
+<tr><th>Vendor</th><th>Invoice No.</th><th>Amount (INR)</th><th>Due Date</th><th>Status</th></tr>
+{% for i in invoices %}
+<tr><td><a href="/invoices/{{ i.id }}">{{ i.vendor }}</a></td><td>{{ i.number }}</td>
+<td>{{ "%.2f"|format(i.amount) }}</td><td>{{ i.due_date }}</td><td>{{ i.status }}</td></tr>
+{% endfor %}
+</table>
+{% else %}<p>No invoices entered yet.</p>{% endif %}
+{% endblock %}

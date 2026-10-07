@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}New invoice - Acme Accounts{% endblock %}
+{% block heading %}Enter a new invoice{% endblock %}
+{% block body %}
+{% if error %}<p class="error">Error: {{ error }}</p>{% endif %}
+<form method="post" action="/invoices/new">
+ <label for="vendor">Vendor</label><input id="vendor" name="vendor" value="{{ form.get('vendor','') }}">
+ <label for="number">Invoice No.</label><input id="number" name="number" value="{{ form.get('number','') }}">
+ <label for="amount">Amount</label><input id="amount" name="amount" placeholder="e.g. 1250.00" value="{{ form.get('amount','') }}">
+ <label for="due_date">{{ due_label }}</label><input id="due_date" name="due_date" placeholder="YYYY-MM-DD" value="{{ form.get('due_date','') }}">
+ <button type="submit">Submit</button>
+</form>
+{% endblock %}

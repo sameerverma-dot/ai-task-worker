@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>{% block title %}Acme Accounts{% endblock %}</title>
+<style>
+ body{font-family:sans-serif;margin:30px;max-width:800px}
+ table{border-collapse:collapse;width:100%} td,th{border:1px solid #ccc;padding:6px;text-align:left}
+ label{display:block;margin-top:10px} input{padding:4px;width:300px}
+ button{margin-top:15px;padding:6px 14px} .error{color:#b00;font-weight:bold} .ok{color:#070;font-weight:bold}
+ nav a{margin-right:15px}
+</style></head>
+<body><nav><a href="/invoices">All invoices</a><a href="/invoices/new">New invoice</a></nav>
+<h1>{% block heading %}Acme Accounts{% endblock %}</h1>
+{% block body %}{% endblock %}
+</body></html>

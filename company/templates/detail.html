@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ inv.number }} - Acme Accounts{% endblock %}
+{% block heading %}Invoice {{ inv.number }}{% endblock %}
+{% block body %}
+{% if saved %}<p class="ok">Invoice saved.</p>{% endif %}
+<table>
+<tr><th>Vendor</th><td>{{ inv.vendor }}</td></tr>
+<tr><th>Invoice No.</th><td>{{ inv.number }}</td></tr>
+<tr><th>Amount (INR)</th><td>{{ "%.2f"|format(inv.amount) }}</td></tr>
+<tr><th>Due Date</th><td>{{ inv.due_date }}</td></tr>
+<tr><th>Status</th><td>{{ inv.status }}</td></tr>
+</table>
+{% if inv.status != 'Paid' %}
+<form method="post" action="/invoices/{{ inv.id }}/pay"><button type="submit">Mark as paid</button></form>
+{% endif %}
+{% endblock %}
