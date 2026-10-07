@@ -5,3 +5,6 @@ __pycache__/
 company/acme.db
 runs/*
 !runs/.gitkeep
+
+# Private study notes, kept locally only
+PRACTICE_NOTES.md

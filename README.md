@@ -99,3 +99,5 @@ RESULTS_PLACEHOLDER
 - **LLM at runtime:** `openai/gpt-oss-120b` on Groq, with tool calling (set in `config.py`). The spec's default, `llama-3.3-70b-versatile`, is no longer offered by Groq.
 - **Libraries:** Flask, Playwright (Chromium), pypdf, reportlab, groq, pydantic, PyYAML, pytest.
 - **Built with Claude Code** (Anthropic's coding agent), following `TASK_WORKER_SPEC.md` milestone by milestone, running each milestone before committing.
+
+See `DESIGN_DECISIONS.md` for the reasoning behind the main design choices.
