@@ -46,7 +46,7 @@ class RunState:
                 lines.append(f"Step {i}: {s['tool']}({s['args']}) -> {status}: {observation[:80]}")
             else:
                 lines.append(f"Step {i}: thought: {s['thought']}\n  action: {s['tool']}({s['args']})"
-                             f"\n  result ({status}): {observation}")
+                             f"\n  result ({status}): {observation[:1200]}")
         return "\n".join(lines)
 
     def prompt_text(self, warning=None):

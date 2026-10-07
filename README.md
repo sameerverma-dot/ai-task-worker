@@ -19,6 +19,7 @@ python run.py "<task>" --auto-approve --video --fault FAIL_FIRST_SUBMIT   # demo
 python -m pytest                          # offline tests, no API key needed (scripted LLM)
 python -m eval.run_eval                   # live eval of all 10 tasks -> eval/results.md
 python -m company.app                     # just the web app, at http://127.0.0.1:5055/invoices
+python try_tools.py                       # calls the tools directly, no LLM (fills and submits by labels)
 ```
 
 Each run writes `runs/<timestamp>/`: `steps.jsonl` (thought, tool, arguments, observation and time for every step), `screenshots/`, `summary.md` (with a ✅/❌ verification line), and `video.webm` with `--video`.

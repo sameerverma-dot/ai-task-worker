@@ -37,7 +37,7 @@
 - id: 5
   name: main + FAIL_FIRST_SUBMIT
   task: Find the latest invoice from Globex, extract the amount and due date, enter it into our accounts system, and tell me once it's done.
-  setup: {faults: [FAIL_FIRST_SUBMIT]}
+  setup: {faults: [FAIL_FIRST_SUBMIT], video: true}   # this run is also the demo video
   expect: {rows: [{number: GLX-1032, amount: 78250, due_date: "2026-10-20"}], row_count: 1, success: true}
 
 - id: 6

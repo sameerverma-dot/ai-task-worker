@@ -43,7 +43,7 @@ class Browser:
         fields = self.page.evaluate(FIELDS_JS)
         clickables = self.page.evaluate(CLICKABLES_JS)
         lines = [f"URL: {self.page.url}", f"TITLE: {self.page.title()}",
-                 "TEXT:", self.page.inner_text("body")[:2500], "FORM FIELDS:"]
+                 "TEXT:", self.page.inner_text("body")[:1500], "FORM FIELDS:"]
         lines += [f"  - '{f['label']}' (current value: '{f['value']}', hint: '{f['placeholder']}')"
                   for f in fields] or ["  (none)"]
         lines.append(f"BUTTONS: {clickables['buttons']}")

@@ -55,7 +55,7 @@ def run_agent(llm, ctx, run_dir, max_steps=MAX_STEPS):
                 screenshot = None  # a missing screenshot must not stop the work
         entry = {"step": step, "thought": thought, "tool": tool, "args": args, "ok": result["ok"],
                  "observation": result["text"][:1500], "seconds": round(time.time() - started, 2),
-                 "screenshot": screenshot}
+                 "screenshot": screenshot, "model": decision.get("model", "scripted")}
         state.record(entry)
         log.write(json.dumps(entry) + "\n")
         log.flush()

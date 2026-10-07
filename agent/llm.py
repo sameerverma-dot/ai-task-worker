@@ -10,12 +10,13 @@ import time
 
 import groq
 
-from config import MODEL
+from config import FALLBACK_MODELS, MODEL
 
 
 class GroqLLM:
     def __init__(self, model=MODEL):
         self.model = model
+        self.fallbacks = [m for m in FALLBACK_MODELS if m != model]
         # The key comes only from the environment and is never printed. (In the cloud sandbox a
         # proxy adds the real key to each request, so a placeholder is enough there.)
         self.client = groq.Groq(api_key=os.environ.get("GROQ_API_KEY", "added-by-proxy"),
@@ -23,7 +24,7 @@ class GroqLLM:
 
     def decide(self, system, user, tools):
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-        for attempt in range(6):
+        for attempt in range(8):
             try:
                 response = self.client.chat.completions.create(
                     model=self.model, messages=messages, tools=tools,
@@ -34,9 +35,15 @@ class GroqLLM:
                     # free-tier limit. Low effort is enough for picking one tool call.
                     **({"reasoning_effort": "low"} if "gpt-oss" in self.model else {}))
                 call = response.choices[0].message.tool_calls[0]
-                return {"tool": call.function.name, "args": json.loads(call.function.arguments or "{}")}
+                return {"tool": call.function.name, "args": json.loads(call.function.arguments or "{}"),
+                        "model": self.model}
             except groq.RateLimitError as e:
-                # Free tier allows few tokens per minute: wait as long as Groq tells us to.
+                # Daily quota used up: waiting would take hours, so switch to the next model.
+                if "tokens per day" in str(e) and self.fallbacks:
+                    print(f"   (daily token limit reached for {self.model}, switching to {self.fallbacks[0]})")
+                    self.model = self.fallbacks.pop(0)
+                    continue
+                # Per-minute limit: wait as long as Groq tells us to.
                 wait = float(e.response.headers.get("retry-after", 10)) + 1
                 print(f"   (rate limited, waiting {wait:.0f}s)")
                 time.sleep(wait)

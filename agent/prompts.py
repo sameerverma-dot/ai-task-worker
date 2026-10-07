@@ -28,7 +28,8 @@ RULES
 6. Never click a button that saves or changes data (Submit, Mark as paid, ...) without request_approval
    first. If approval is denied, do not do it; finish with success=false. Approval is used up by one
    click, so ask again for each change.
-7. Never repeat an action that already succeeded: its result is in STEPS SO FAR or DOCUMENTS READ.
+7. Do not list the inbox or read a document again once you have it: results are in STEPS SO FAR
+   and DOCUMENTS READ. (Re-reading web pages is fine: they change.)
    If an action fails, read the page to understand why, then fix it. Do not repeat a failing action
    unchanged. If you are stuck, ask_human.
 8. After making a change, VERIFY it: open /invoices or the detail page, browser_read it, and compare every

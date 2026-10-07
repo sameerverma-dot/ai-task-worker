@@ -59,22 +59,25 @@ def run_one(task, llm):
     approve = lambda summary: setup.get("approve", True)
 
     started = time.time()
-    state, run_dir = run_task(task["task"], llm, ask, approve, name=f"eval{task['id']}")
+    state, run_dir = run_task(task["task"], llm, ask, approve, video=setup.get("video", False),
+                              name=f"eval{task['id']}")
     passed, reason = check(task["expect"], state, company_app.all_invoices())
-    return {"id": task["id"], "name": task["name"], "passed": passed, "reason": reason,
+    models = sorted({s["model"] for s in state.steps})
+    return {"id": task["id"], "name": task["name"], "passed": passed, "reason": reason, "models": models,
             "steps": len(state.steps), "seconds": round(time.time() - started), "run": run_dir.name}
 
 
 def write_results(results):
     passed = sum(r["passed"] for r in results)
     lines = ["# Eval results", "",
-             f"Model: `{GroqLLM().model}` (live, Groq). Success rate: **{passed}/{len(results)}"
+             f"Live run on Groq (free tier). Success rate: **{passed}/{len(results)}"
              f" ({100 * passed // max(len(results), 1)}%)**", "",
-             "Time includes waiting for Groq's free-tier rate limit (8k tokens/min).", "",
-             "| # | Task | Result | Steps | Time (s) | Reason | Run folder |", "|---|---|---|---|---|---|---|"]
+             "Time includes waiting for Groq's free-tier rate limit (8k tokens/min). When a model's daily token "
+             "quota ran out, the agent switched to the next model, so the model is listed per task.", "",
+             "| # | Task | Result | Steps | Time (s) | Reason | Model(s) | Run folder |", "|---|---|---|---|---|---|---|---|"]
     for r in results:
         lines.append(f"| {r['id']} | {r['name']} | {'✅ pass' if r['passed'] else '❌ fail'} | {r['steps']} "
-                     f"| {r['seconds']} | {r['reason']} | `runs/{r['run']}` |")
+                     f"| {r['seconds']} | {r['reason']} | {', '.join(r['models'])} | `runs/{r['run']}` |")
     (EVAL_DIR / "results.md").write_text("\n".join(lines) + "\n")
 
 
