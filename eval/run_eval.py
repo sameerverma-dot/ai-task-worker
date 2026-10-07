@@ -3,9 +3,11 @@
     python -m eval.run_eval            # all tasks
     python -m eval.run_eval 1 5 6      # only some tasks
     MODEL=qwen/qwen3.8-27b python -m eval.run_eval   # pick the model
+    python -m eval.run_eval 5 8 9 --fallback          # run in this order; switch model when quota runs out
 
-Every task runs on ONE model (no fallback), so results are comparable. If the model's daily quota
-runs out, the run pauses until quota comes back, then continues.
+By default every task runs on ONE model, so results are comparable, and the run pauses when the
+model's daily quota runs out. With --fallback it switches to the next model instead; the table then
+lists the model used per task.
 
 Writes eval/results.md. Failures stay in the table with a one-line reason.
 """
@@ -67,21 +69,23 @@ def run_one(task, llm):
                               name=f"eval{task['id']}")
     passed, reason = check(task["expect"], state, company_app.all_invoices())
     seconds = round(time.time() - started)
-    return {"id": task["id"], "name": task["name"], "passed": passed, "reason": reason,
+    models = sorted({s["model"] for s in state.steps})
+    return {"id": task["id"], "name": task["name"], "passed": passed, "reason": reason, "models": models,
             "steps": len(state.steps), "seconds": seconds, "run": run_dir.name}
 
 
-def write_results(results, model):
+def write_results(results):
     passed = sum(r["passed"] for r in results)
     lines = ["# Eval results", "",
-             f"Model: `{model}` for every task (live, Groq free tier). "
+             f"Model(s): {', '.join(f'`{m}`' for m in sorted({m for r in results for m in r['models']}))} "
+             "(live, Groq free tier). "
              f"Success rate: **{passed}/{len(results)} ({100 * passed // max(len(results), 1)}%)**", "",
              "Time is wall-clock and includes waiting for Groq's rate limits (and any pause for the daily "
              "token quota to come back), so it says more about the free tier than about the agent.", "",
-             "| # | Task | Result | Steps | Time (s) | Reason | Run folder |", "|---|---|---|---|---|---|---|"]
+             "| # | Task | Result | Steps | Time (s) | Reason | Model | Run folder |", "|---|---|---|---|---|---|---|---|"]
     for r in results:
         lines.append(f"| {r['id']} | {r['name']} | {'✅ pass' if r['passed'] else '❌ fail'} | {r['steps']} "
-                     f"| {r['seconds']} | {r['reason']} | `runs/{r['run']}` |")
+                     f"| {r['seconds']} | {r['reason']} | {', '.join(r['models'])} | `runs/{r['run']}` |")
     (EVAL_DIR / "results.md").write_text("\n".join(lines) + "\n")
 
 
@@ -89,16 +93,18 @@ def main():
     if not any(INBOX_DIR.glob("*.pdf")):
         make_invoices.main()
     tasks = yaml.safe_load((EVAL_DIR / "tasks.yaml").read_text())
-    only = {int(a) for a in sys.argv[1:]}
-    tasks = [t for t in tasks if not only or t["id"] in only]
+    order = [int(a) for a in sys.argv[1:] if a.isdigit()]
+    if order:  # run only these tasks, in the order given
+        by_id = {t["id"]: t for t in tasks}
+        tasks = [by_id[i] for i in order]
     server = company_app.start_in_background()
-    llm = GroqLLM(fallback=False)  # one model for every task
+    llm = GroqLLM(fallback="--fallback" in sys.argv)  # default: one model for every task
     results = []
     for task in tasks:
         print(f"\n=== Task {task['id']}: {task['name']} ===")
         results.append(run_one(task, llm))
         print(f"--> {'PASS' if results[-1]['passed'] else 'FAIL'}: {results[-1]['reason']}")
-        write_results(results, llm.model)  # write after each task, so partial results survive a crash
+        write_results(results)  # write after each task, so partial results survive a crash
     server.shutdown()
     faults.reset()
     print((EVAL_DIR / "results.md").read_text())
