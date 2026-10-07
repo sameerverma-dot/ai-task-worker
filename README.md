@@ -70,7 +70,49 @@ Each run writes `runs/<timestamp>/`: `steps.jsonl` (thought, tool, arguments, ob
 
 ## Results
 
-RESULTS_PLACEHOLDER
+All numbers are from live runs against Groq's **free tier**. Failures are kept, with a one-line reason.
+
+### The free-tier quota limit (read this first)
+
+Groq's free tier limits each model to **8,000 tokens per minute** and **200,000 tokens per day** (a rolling 24-hour window). One task uses roughly **40–50k tokens**, because the whole prompt is re-sent at every step. So:
+
+- **one model can run only about 4 tasks per day**, and a full 10-task eval (≈450k tokens) can't run on a single model in one session;
+- every step waits ~15–30 s for the per-minute limit, so a task takes 3–12 minutes;
+- the paid Dev tier, which would remove this, wasn't available while this was built.
+
+To get through all 10 tasks anyway, the eval was run in parts, using whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`). Each task's row lists the model(s) that actually made its decisions, and every step in `steps.jsonl` records its model. **Results from different models are not directly comparable.** `gpt-oss-20b`, the last fallback, is clearly the weakest of the three.
+
+`python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses when its quota runs out. With a full day's quota, or the Dev tier, that gives a clean single-model result.
+
+### Results by task
+
+RESULTS_TABLE
+
+### Earlier runs on `openai/gpt-oss-120b`
+
+Before its daily quota ran out, gpt-oss-120b passed every task it was given:
+
+| Task | Result | Steps | Time (s) | Run folder |
+|---|---|---|---|---|
+| 1. Main Globex task (Milestone 3) | ✅ pass, verified in UI | 18 | 218 | `runs/20261007-172655` |
+| 4. Ambiguous Acme → asked the human | ✅ pass | 18 | 202 | `runs/20261007-173051-eval4` |
+| 5. Main task + `FAIL_FIRST_SUBMIT` → recovered from the 500 | ✅ pass | 27 | 367 | `runs/20261007-173412-eval5` |
+| 6. Main task + `RENAME_FIELD` + `SLOW_PAGE` → used the new label | ✅ pass | 22 | 158 | `runs/20261007-174019-eval6` |
+| 7. Already entered → no duplicate created | ✅ pass | 12 | 77 | `runs/20261007-174258-eval7` |
+
+### A bug the eval found
+
+In run 1, task 5's Submit failed three times for three *different* reasons: the injected 500, a missing approval, then a missing field. The loop counted that as "the same action failed 3 times" and blocked Submit for the rest of the run, even after the agent had fixed the form. **Fix:** failures are now counted *in a row*, so any successful step resets the count (`agent/loop.py`). There's a regression test in `tests/test_loop.py`.
+
+### Offline tests
+
+`python -m pytest`: **8 passed**, no API key needed. The tests cover:
+- filling by label, including after `RENAME_FIELD`;
+- stopping at `MAX_STEPS` with "INCOMPLETE";
+- retry then forced alternative, and the reset after a success;
+- Submit blocked without approval;
+- denied approval writes nothing;
+- duplicate invoice numbers rejected by the app.
 
 ## Assumptions
 
@@ -81,7 +123,9 @@ RESULTS_PLACEHOLDER
 
 ## Known limitations
 
-- **Speed:** about 15–20 s per step, mostly waiting for the free-tier rate limit; a task takes 4–8 minutes.
+- **Free-tier quota:** 200k tokens per model per day, so about 4 tasks per model per day; see Results. The full eval couldn't run on a single model in one session.
+- **Speed:** about 15–30 s per step, mostly waiting for the per-minute rate limit; a task takes 3–12 minutes.
+- **Prompt size:** the whole condensed history is re-sent at every step, and that's what drives token use. Prompt caching or a multi-field fill tool would cut it a lot.
 - One field per `browser_fill` call costs steps; `MAX_STEPS` was raised from 25 to 40 so two-invoice tasks fit.
 - The model sometimes takes redundant steps (re-listing the inbox, asking for approval before the last field is filled). The code-level gates make that safe, not efficient.
 - Results vary between runs because the LLM is not deterministic; the eval is a single run per task.
@@ -96,7 +140,7 @@ RESULTS_PLACEHOLDER
 
 ## Models and tools used
 
-- **LLM at runtime:** `openai/gpt-oss-120b` on Groq, with tool calling (set in `config.py`). The spec's default, `llama-3.3-70b-versatile`, is no longer offered by Groq.
+- **LLM at runtime:** `openai/gpt-oss-120b` on Groq, with tool calling (set in `config.py`). When a model's daily quota runs out, it falls back to `qwen/qwen3.8-27b` and then `openai/gpt-oss-20b`. The spec's default, `llama-3.3-70b-versatile`, is no longer offered by Groq.
 - **Libraries:** Flask, Playwright (Chromium), pypdf, reportlab, groq, pydantic, PyYAML, pytest.
 - **Built with Claude Code** (Anthropic's coding agent), following `TASK_WORKER_SPEC.md` milestone by milestone, running each milestone before committing.
 
