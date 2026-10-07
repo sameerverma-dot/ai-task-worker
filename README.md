@@ -100,6 +100,18 @@ Before its daily quota ran out, gpt-oss-120b passed every task it was given:
 | 6. Main task + `RENAME_FIELD` + `SLOW_PAGE` → used the new label | ✅ pass | 22 | 158 | `runs/20261007-174019-eval6` |
 | 7. Already entered → no duplicate created | ✅ pass | 12 | 77 | `runs/20261007-174258-eval7` |
 
+### Demo video
+
+**`runs/demo-replay-task5/video.webm`** (56 s): the main task with the `FAIL_FIRST_SUBMIT` fault. The agent reads the invoices, fills the form by its labels, asks for approval and submits. The app returns a **500**; the agent reads the error, goes back, refills the form, asks for approval again, resubmits, and verifies the saved invoice on its detail page.
+
+**This is a replay, not a live LLM run.** By the time the video was recorded, every model's free-tier quota was used up. So the *decisions* come from the logged, successful live gpt-oss-120b run (`runs/20261007-173412-eval5/steps.jsonl`). They're fed back through the real loop with the scripted LLM, and the browser, app, injected 500, approval gate and verification all run for real. It's reproducible with:
+
+```bash
+python -m eval.replay_run runs/20261007-173412-eval5 --fault FAIL_FIRST_SUBMIT
+```
+
+`run.py --video` records a live run the same way when quota is available.
+
 ### A bug the eval found
 
 In run 1, task 5's Submit failed three times for three *different* reasons: the injected 500, a missing approval, then a missing field. The loop counted that as "the same action failed 3 times" and blocked Submit for the rest of the run, even after the agent had fixed the form. **Fix:** failures are now counted *in a row*, so any successful step resets the count (`agent/loop.py`). There's a regression test in `tests/test_loop.py`.
