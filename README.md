@@ -80,25 +80,32 @@ Groq's free tier limits each model to **8,000 tokens per minute** and **200,000 
 - every step waits ~15–30 s for the per-minute limit, so a task takes 3–12 minutes;
 - the paid Dev tier, which would remove this, wasn't available while this was built.
 
-To get through all 10 tasks anyway, the eval was run in parts, using whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`). Each task's row lists the model(s) that actually made its decisions, and every step in `steps.jsonl` records its model. **Results from different models are not directly comparable.** `gpt-oss-20b`, the last fallback, is clearly the weakest of the three.
+**What that meant in practice:** the eval was run in parts on whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`), and every step in `steps.jsonl` records the model that made it. By about 00:30 IST all three models were out of quota, so **tasks 8, 9 and 10 never ran live.** Results from different models aren't directly comparable, and `gpt-oss-20b`, the last fallback, is clearly the weakest.
 
-`python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses when its quota runs out. With a full day's quota, or the Dev tier, that gives a clean single-model result.
+`python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses whenever its quota runs out. With a full day's quota, or the paid tier, that gives a clean single-model result. This wasn't possible before the deadline.
 
 ### Results by task
 
-RESULTS_TABLE
+**7 of the 10 tasks have a passing live run** (tasks 1–7). Tasks 8–10 weren't reached because of the quota. Every live attempt is listed, failures included.
 
-### Earlier runs on `openai/gpt-oss-120b`
+| # | Task | Live attempts (model, steps, result) | Run folders |
+|---|---|---|---|
+| 1 | Main Globex task | gpt-oss-120b, 18 steps ✅ · gpt-oss-120b, *stalled at step 5 when its daily quota ran out (no result)* · qwen (1st step on gpt-oss-120b), 16 steps ✅ | `20261007-172655`, `20261007-174446-eval1`, `20261007-175600-eval1` |
+| 2 | All unpaid Initech (2 invoices, skip the paid one) | qwen, 27 steps ✅ | `20261007-180113-eval2` |
+| 3 | Mark Umbrella invoice paid | qwen, 8 steps ✅ | `20261007-181307-eval3` |
+| 4 | Ambiguous "Acme" → must ask the human | gpt-oss-120b, 18 steps ✅ · qwen, 16 steps ✅ | `20261007-173051-eval4`, `20261007-181549-eval4` |
+| 5 | Main task + `FAIL_FIRST_SUBMIT` (500 error) | gpt-oss-120b, 27 steps ✅ · qwen → gpt-oss-20b, 40 steps ❌ *retry bug, since fixed* · gpt-oss-20b (1st step on gpt-oss-120b), 32 steps ❌ *stuck re-listing the inbox (31×), stopped when quota ran out* | `20261007-173412-eval5`, `20261007-182230-eval5`, `20261007-184605-eval5` |
+| 6 | Main task + `RENAME_FIELD` + `SLOW_PAGE` | gpt-oss-120b, 22 steps ✅ · gpt-oss-20b, *stopped mid-task (run cancelled)* | `20261007-174019-eval6`, `20261007-183440-eval6` |
+| 7 | Already entered → no duplicate | gpt-oss-120b, 12 steps ✅ | `20261007-174258-eval7` |
+| 8 | Read-only: which vendor owes the most? | *not run live (quota)* | — |
+| 9 | Impossible: "email the vendor" | *not run live (quota)* | — |
+| 10 | Approval denied → nothing written | *not run live (quota)*; covered offline by `test_denied_approval_writes_nothing` | — |
 
-Before its daily quota ran out, gpt-oss-120b passed every task it was given:
+Every pass was checked directly in SQLite by `eval/run_eval.py` (row exists exactly once, with the right amount, due date and status), not taken from the agent's own report. The task 1 run in Milestone 3 was checked through its ✅-verified `summary.md` and the app state. Raw tables: `eval/results_run1.md`.
 
-| Task | Result | Steps | Time (s) | Run folder |
-|---|---|---|---|---|
-| 1. Main Globex task (Milestone 3) | ✅ pass, verified in UI | 18 | 218 | `runs/20261007-172655` |
-| 4. Ambiguous Acme → asked the human | ✅ pass | 18 | 202 | `runs/20261007-173051-eval4` |
-| 5. Main task + `FAIL_FIRST_SUBMIT` → recovered from the 500 | ✅ pass | 27 | 367 | `runs/20261007-173412-eval5` |
-| 6. Main task + `RENAME_FIELD` + `SLOW_PAGE` → used the new label | ✅ pass | 22 | 158 | `runs/20261007-174019-eval6` |
-| 7. Already entered → no duplicate created | ✅ pass | 12 | 77 | `runs/20261007-174258-eval7` |
+**Takeaways:**
+- On `gpt-oss-120b` and `qwen3.8-27b`, every attempt that ran to the end passed except one, and that one exposed a real bug (below).
+- On `gpt-oss-20b`, every attempt failed. A small model loses track in a long multi-step task, so the model matters as much as the loop.
 
 ### Demo video
 
