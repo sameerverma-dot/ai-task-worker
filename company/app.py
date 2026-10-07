@@ -3,6 +3,7 @@
 Run on its own:  python -m company.app   then open http://127.0.0.1:5055/invoices
 run.py and the eval start it automatically in a background thread.
 """
+import logging
 import re
 import sqlite3
 import threading
@@ -117,6 +118,7 @@ def mark_paid(inv_id):
 def start_in_background():
     """Start the app in a background thread (used by run.py, eval and tests)."""
     init_db()
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)  # keep the agent's output readable
     server = make_server("127.0.0.1", APP_PORT, app, threaded=True)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
