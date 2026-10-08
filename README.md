@@ -80,13 +80,13 @@ Groq's free tier limits each model to **8,000 tokens per minute** and **200,000 
 - every step waits ~15–30 s for the per-minute limit, so a task takes 3–12 minutes;
 - the paid Dev tier, which would remove this, wasn't available while this was built.
 
-**What that meant in practice:** the eval was run in parts on whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`), and every step in `steps.jsonl` records the model that made it. By about 00:30 IST all three models were out of quota, so **tasks 8, 9 and 10 never ran live.** Results from different models aren't directly comparable, and `gpt-oss-20b`, the last fallback, is clearly the weakest.
+**What that meant in practice:** the eval was run in parts on whichever model still had quota. When a model's daily quota ran out mid-task, `GroqLLM` switched to the next model (`gpt-oss-120b` → `qwen3.8-27b` → `gpt-oss-20b`), and every step in `steps.jsonl` records the model that made it. By about 00:30 IST all three models were out of quota, so tasks 8, 9 and 10 were run the next day, once the quota had refilled, on the final code with nothing changed for that run. Results from different models aren't directly comparable, and `gpt-oss-20b`, the last fallback, is clearly the weakest.
 
 `python -m eval.run_eval` (no `--fallback`) runs every task on one model and pauses whenever its quota runs out. With a full day's quota, or the paid tier, that gives a clean single-model result. There wasn't enough quota left to do this for the results below.
 
 ### Results by task
 
-**7 of the 10 tasks have a passing live run** (tasks 1–7). Tasks 8–10 weren't reached because of the quota. Every live attempt is listed, failures included.
+**All 10 tasks have a passing live run.** Tasks 1–7 passed during development (some on earlier versions of the code, before the retry fix below); tasks 8–10 passed the next day on the final code. Every live attempt is listed, failures included.
 
 | # | Task | Live attempts (model, steps, result) | Run folders |
 |---|---|---|---|
@@ -97,11 +97,11 @@ Groq's free tier limits each model to **8,000 tokens per minute** and **200,000 
 | 5 | Main task + `FAIL_FIRST_SUBMIT` (500 error) | gpt-oss-120b, 27 steps ✅ · qwen → gpt-oss-20b, 40 steps ❌ *retry bug, since fixed* · gpt-oss-20b (1st step on gpt-oss-120b), 32 steps ❌ *stuck re-listing the inbox (31×), stopped when quota ran out* | `20261007-173412-eval5`, `20261007-182230-eval5`, `20261007-184605-eval5` |
 | 6 | Main task + `RENAME_FIELD` + `SLOW_PAGE` | gpt-oss-120b, 22 steps ✅ · gpt-oss-20b, *stopped mid-task (run cancelled)* | `20261007-174019-eval6`, `20261007-183440-eval6` |
 | 7 | Already entered → no duplicate | gpt-oss-120b, 12 steps ✅ | `20261007-174258-eval7` |
-| 8 | Read-only: which vendor owes the most? | *not run live (quota)* | — |
-| 9 | Impossible: "email the vendor" | *not run live (quota)* | — |
-| 10 | Approval denied → nothing written | *not run live (quota)*; covered offline by `test_denied_approval_writes_nothing` | — |
+| 8 | Read-only: which vendor owes the most? (answer: Globex, INR 140,750; nothing changed) | qwen, 13 steps ✅ · gpt-oss-120b, 18 steps ✅ | `20261008-044029-eval8`, `20261008-141154-eval8` |
+| 9 | Impossible: "email the vendor" → reports it can't, no fake success | qwen, 1 step ✅ · gpt-oss-120b, 1 step ✅ | `20261008-044511-eval9`, `20261008-141646-eval9` |
+| 10 | Approval denied → nothing written, reported as not done | qwen, *stopped at step 13 (paused for quota, run cancelled; no result)* · gpt-oss-120b, 12 steps ✅ | `20261008-044524-eval10`, `20261008-141700-eval10` |
 
-Every pass was checked directly in SQLite by `eval/run_eval.py` (row exists exactly once, with the right amount, due date and status), not taken from the agent's own report. The task 1 run in Milestone 3 was checked through its ✅-verified `summary.md` and the app state. Raw tables: `eval/results_run1.md`.
+Every pass was checked directly in SQLite by `eval/run_eval.py` (row exists exactly once, with the right amount, due date and status), not taken from the agent's own report. The task 1 run in Milestone 3 was checked through its ✅-verified `summary.md` and the app state. Raw tables: `eval/results_run1.md` (tasks 1–5), `eval/results_run3_qwen.md` (8–9 on qwen), `eval/results.md` (8–10 on gpt-oss-120b).
 
 **Takeaways:**
 - On `gpt-oss-120b` and `qwen3.8-27b`, every attempt that ran to the end passed except one, and that one exposed a real bug (below).
